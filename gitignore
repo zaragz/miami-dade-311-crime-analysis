@@ -1,0 +1,16 @@
+
+.RData
+.Rhistory
+.Rproj.user/
+.DS_Store
+
+# Original large 311 datasets
+data/311_Service_Requests_-_Miami-Dade_County_-_*.csv
+
+# Large intermediate output datasets
+output/311_cleaned_combined_FINAL.csv
+output/crime_311_merged.csv
+
+# Archives and video exports
+*.zip
+*.mp4
