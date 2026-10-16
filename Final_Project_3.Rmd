@@ -1,0 +1,478 @@
+---
+title: "Miami-Dade 311 Requests and Property Crime Analysis"
+author: "Zara Gonzalez, Johnny Nguyen, Elston Miller, Nicholas Alex, Wesley Huang"
+date: "April 26, 2026"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+# Project Goal
+
+The goal of this project is to analyze the relationship between citizen service requests and property crime patterns in Miami-Dade County from 2017 to 2019.
+
+We aim to answer:
+
+1. How do 311 service requests change over time?
+2. What types of service requests are most common?
+3. How do property crime trends change over the same time period?
+4. Is there a relationship between 311 complaints and property crime trends?
+
+# Load Required Packages
+
+```{r libraries}
+library(tidyverse)
+library(lubridate)
+library(readxl)
+library(tidytext)
+library(stringr)
+library(ggplot2)
+library(scales)
+```
+
+# Data Sources
+
+This project uses two datasets:
+
+1. Miami-Dade 311 Service Requests from 2017, 2018, and 2019.
+2. Florida Department of Law Enforcement property crime data from 2017, 2018, and 2019.
+
+The 311 dataset represents citizen-reported non-emergency service requests.  
+The property crime dataset represents official reported property crime incidents.
+
+# Load 311 Service Request Data
+
+```{r load-311-data}
+Miami1 <- read.csv("~/Final_Project_3/data/311_Service_Requests_-_Miami-Dade_County_-_2017.csv")
+Miami2 <- read.csv("~/Final_Project_3/data/311_Service_Requests_-_Miami-Dade_County_-_2018.csv")
+Miami3 <- read.csv("~/Final_Project_3/data/311_Service_Requests_-_Miami-Dade_County_-_2019.csv")
+```
+
+# Clean 311 Data
+
+```{r clean-311-data}
+# Replace missing issue descriptions with blank text
+Miami1$issue_description[is.na(Miami1$issue_description)] <- ""
+Miami2$issue_description[is.na(Miami2$issue_description)] <- ""
+Miami3$issue_description[is.na(Miami3$issue_description)] <- ""
+
+# Convert date columns to date-time format
+Miami1$ticket_created_date_time <- ymd_hms(Miami1$ticket_created_date_time, quiet = TRUE)
+Miami2$ticket_created_date_time <- ymd_hms(Miami2$ticket_created_date_time, quiet = TRUE)
+Miami3$ticket_created_date_time <- ymd_hms(Miami3$ticket_created_date_time, quiet = TRUE)
+
+Miami1$ticket__last_update_date_time <- ymd_hms(Miami1$ticket__last_update_date_time, quiet = TRUE)
+Miami2$ticket__last_update_date_time <- ymd_hms(Miami2$ticket__last_update_date_time, quiet = TRUE)
+Miami3$ticket__last_update_date_time <- ymd_hms(Miami3$ticket__last_update_date_time, quiet = TRUE)
+
+Miami1$ticket_closed_date_time <- ymd_hms(Miami1$ticket_closed_date_time, quiet = TRUE)
+Miami2$ticket_closed_date_time <- ymd_hms(Miami2$ticket_closed_date_time, quiet = TRUE)
+Miami3$ticket_closed_date_time <- ymd_hms(Miami3$ticket_closed_date_time, quiet = TRUE)
+
+# Create year variable
+Miami1$year <- year(Miami1$ticket_created_date_time)
+Miami2$year <- year(Miami2$ticket_created_date_time)
+Miami3$year <- year(Miami3$ticket_created_date_time)
+
+# Combine all 311 datasets
+combined_311 <- bind_rows(Miami1, Miami2, Miami3)
+
+# Keep analysis focused on 2017-2019
+combined_311 <- combined_311 %>%
+  filter(year %in% c(2017, 2018, 2019))
+```
+
+# Cleaned 311 Dataset Preview
+
+```{r cleaned-311-preview}
+glimpse(combined_311)
+
+head(combined_311[, c("year", "issue_type", "issue_description", "ticket_created_date_time")])
+```
+
+# 311 Summary Tables
+
+```{r summary-311}
+issue_counts <- combined_311 %>%
+  count(issue_type, sort = TRUE)
+
+issue_by_year <- combined_311 %>%
+  count(year, issue_type, sort = TRUE)
+
+requests_total <- combined_311 %>%
+  group_by(year) %>%
+  summarise(total_requests = n())
+
+head(issue_counts, 10)
+requests_total
+```
+
+# Load and Clean Property Crime Data
+
+```{r load-clean-crime}
+# Load crime data
+crime_2017 <- read_excel("~/Final_Project_3/data/PROPERTY_17.xlsx", skip = 2)
+crime_2018 <- read_excel("~/Final_Project_3/data/Property-Crime-County-Type-2018.xlsx", skip = 2)
+crime_2019 <- read_excel("~/Final_Project_3/data/Property-Crime-County-Type-2019.xlsx", skip = 2)
+
+# Extract Miami-Dade and add year
+miami_2017 <- crime_2017 %>%
+  filter(County == "Miami-Dade") %>%
+  mutate(year = 2017)
+
+miami_2018 <- crime_2018 %>%
+  filter(County == "Miami-Dade") %>%
+  mutate(year = 2018)
+
+miami_2019 <- crime_2019 %>%
+  filter(County == "Miami-Dade") %>%
+  mutate(year = 2019)
+
+# Clean columns
+clean_crime <- function(df) {
+  df %>%
+    select(
+      year,
+      Burglary,
+      Larceny,
+      `Motor Vehicle Theft`,
+      `Total Property Crime`
+    )
+}
+
+crime_combined <- bind_rows(
+  clean_crime(miami_2017),
+  clean_crime(miami_2018),
+  clean_crime(miami_2019)
+)
+```
+
+# Merged Dataset
+
+```{r merge-data}
+# Merge by year
+final_merged <- left_join(crime_combined, requests_total, by = "year")
+
+final_merged
+```
+
+# Exploratory Analysis: Most Common 311 Complaints
+
+```{r top-complaints}
+plot_top_complaints <- issue_counts %>%
+  arrange(desc(n)) %>%
+  slice_head(n = 10)
+
+top3 <- plot_top_complaints %>%
+  arrange(desc(n)) %>%
+  slice_head(n = 3) %>%
+  pull(issue_type)
+
+plot_top_complaints <- plot_top_complaints %>%
+  mutate(label = ifelse(issue_type %in% top3, "top3", "other"))
+
+topComplaints <- ggplot(plot_top_complaints, aes(x = n, y = reorder(issue_type, n), fill = label)) +
+  geom_col() +
+  scale_fill_manual(values = c("top3" = "darkgrey", "other" = "lightgrey")) +
+  scale_x_continuous(labels = comma) +
+  labs(
+    title = "Most Common 311 Complaints, Miami-Dade County (2017-2019)",
+    x = "Count",
+    y = ""
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+topComplaints
+```
+
+**Interpretation:**  
+The most common 311 requests are mostly related to sanitation and public service issues, such as trash, waste, and maintenance requests. This suggests that 311 data reflects daily quality-of-life concerns reported by residents.
+
+# 311 Requests Over Time
+
+```{r requests-over-time}
+plot_requests_total <- requests_total
+
+requestsTrend <- ggplot(plot_requests_total, aes(x = year, y = total_requests)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = c(2017, 2018, 2019)) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Total 311 Requests in Miami-Dade County (2017-2019)",
+    x = "Year",
+    y = "Number of Requests"
+  ) +
+  theme_bw()
+
+requestsTrend
+```
+
+**Interpretation:**  
+311 requests increased from 2017 to 2018, then declined slightly in 2019. Overall, service request volume remained relatively stable across the three-year period.
+
+# Property Crime Trends
+
+```{r property-crime-trends}
+plot_property_crime <- final_merged
+
+propertyCrimeTrend <- ggplot(plot_property_crime, aes(x = year, y = `Total Property Crime`)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = c(2017, 2018, 2019)) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Total Property Crime in Miami-Dade County (2017-2019)",
+    x = "Year",
+    y = "Reported Property Crimes"
+  ) +
+  theme_bw()
+
+propertyCrimeTrend
+```
+
+**Interpretation:**  
+Property crime declined from 2017 to 2019. This trend allows comparison with 311 requests to determine whether citizen complaints move similarly to crime patterns.
+
+# Comparison: 311 Requests vs Property Crime
+
+```{r normalized-comparison}
+plot_dual_axis <- final_merged
+
+ratio <- max(plot_dual_axis$total_requests) / max(plot_dual_axis$`Total Property Crime`)
+
+dualAxis <- ggplot(plot_dual_axis, aes(x = year)) +
+  geom_line(
+    aes(y = total_requests),
+    colour = "darkorange",
+    linewidth = 0.7,
+    alpha = 0.8
+  ) +
+  geom_line(
+    aes(y = `Total Property Crime` * ratio),
+    colour = "blue",
+    linewidth = 0.7,
+    alpha = 0.8
+  ) +
+  geom_point(aes(y = total_requests), size = 2.5) +
+  geom_point(aes(y = `Total Property Crime` * ratio), size = 2.5) +
+  scale_y_continuous(
+    name = "311 Requests",
+    labels = comma,
+    sec.axis = sec_axis(
+      ~ . / ratio,
+      name = "Total Property Crime",
+      labels = comma
+    )
+  ) +
+  scale_x_continuous(breaks = c(2017, 2018, 2019)) +
+  labs(
+    title = "Miami-Dade County 311 Requests vs. Total Property Crime (2017-2019)",
+    x = "Year"
+  ) +
+  theme_bw() +
+  theme(
+    axis.title.y.left = element_text(color = "darkorange", face = "bold"),
+    axis.text.y.left = element_text(color = "darkorange"),
+    axis.title.y.right = element_text(color = "blue", face = "bold"),
+    axis.text.y.right = element_text(color = "blue"),
+    plot.title = element_text(size = 10.3)
+  )
+
+dualAxis
+```
+
+**Interpretation:**  
+This chart compares the direction of change between 311 requests and property crime. While both datasets show some decline by 2019, the trends are not identical. This suggests that 311 complaints do not directly measure crime but may still reflect broader community conditions.
+
+# Text Mining Preparation
+
+```{r text-prep}
+issue_data <- combined_311 %>%
+  select(issue_type, year) %>%
+  filter(!is.na(issue_type)) %>%
+  mutate(
+    issue_type = tolower(issue_type),
+    issue_type = str_replace_all(issue_type, "[^a-z\\s]", "")
+  )
+
+issue_words <- issue_data %>%
+  unnest_tokens(word, issue_type) %>%
+  anti_join(stop_words, by = "word")
+```
+
+# Text Mining: Word Frequency Analysis
+
+```{r word-frequency-analysis}
+# Prepare department description text
+dept_data <- combined_311 %>%
+  select(case_owner_description) %>%
+  filter(!is.na(case_owner_description)) %>%
+  mutate(
+    case_owner_description = tolower(case_owner_description),
+    case_owner_description = str_replace_all(case_owner_description, "[^a-z\\s]", "")
+  )
+
+dept_words <- dept_data %>%
+  unnest_tokens(word, case_owner_description) %>%
+  anti_join(stop_words, by = "word")
+```
+
+# Citizen Issue Word Frequency
+
+```{r citizen-issue-word-frequency}
+plot_issue_words <- issue_words %>%
+  count(word, sort = TRUE) %>%
+  slice_head(n = 15)
+
+issueWordPlot <- ggplot(plot_issue_words, aes(x = reorder(word, n), y = n)) +
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Top Citizen Issue Words",
+    x = "Word",
+    y = "Frequency"
+  ) +
+  theme_bw()
+
+issueWordPlot
+```
+
+**Interpretation:**  
+The most frequent citizen issue words are related to requests, trash, bulky waste, carts, and recycling. This shows that most 311 complaints are focused on public services and quality-of-life concerns rather than direct crime issues.
+
+# Department Description Word Frequency
+
+```{r department-desc-wrd-freq}
+plot_dept_words <- dept_words %>%
+  count(word, sort = TRUE) %>%
+  slice_head(n = 15)
+
+deptWordPlot <- ggplot(plot_dept_words, aes(x = reorder(word, n), y = n)) +
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Top Department Description Words",
+    x = "Word",
+    y = "Frequency"
+  ) +
+  theme_bw()
+
+deptWordPlot
+```
+
+**Interpretation:**  
+The department description words are mostly related to waste, solid management, enforcement, roads, bridges, and traffic. This suggests that departments classify many 311 requests as service, infrastructure, and public works issues.
+
+# Citizen Issue vs Department Description Word Frequency
+```{r citizen-vs-department}
+plot_combined_words <- bind_rows(
+  plot_issue_words %>% mutate(type = "Citizen Issue"),
+  plot_dept_words %>% mutate(type = "Department Description")
+) %>%
+  group_by(word) %>%
+  mutate(total_frequency = sum(n)) %>%
+  ungroup() %>%
+  arrange(desc(total_frequency)) %>%
+  slice_head(n = 18)
+
+combinedWordPlot <- ggplot(plot_combined_words, aes(
+  x = reorder(word, total_frequency),
+  y = n,
+  fill = type
+)) +
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Citizen Issue vs Department Description Word Frequency",
+    x = "Word",
+    y = "Frequency",
+    fill = "type"
+  ) +
+  theme_minimal()
+
+combinedWordPlot
+```
+
+**Interpretation:**  
+This comparison shows that citizens and departments describe issues differently, but both emphasize service-related problems. Citizen words focus more on visible complaints like trash and bulky waste, while department words focus more on administrative categories such as waste management and infrastructure.
+
+# TF-IDF Analysis by Year
+
+```{r tfidf-analysis}
+plot_issue_tfidf <- issue_words %>%
+  count(year, word, name = "n") %>%
+  bind_tf_idf(word, year, n) %>%
+  group_by(year) %>%
+  mutate(tfidf_norm = tf_idf / sum(tf_idf)) %>%
+  ungroup()
+
+plot_top_words <- plot_issue_tfidf %>%
+  group_by(year) %>%
+  slice_max(tfidf_norm, n = 5, with_ties = FALSE) %>%
+  ungroup()
+
+tfidfPlot <- ggplot(plot_top_words, aes(
+  x = reorder_within(word, tfidf_norm, year),
+  y = tfidf_norm,
+  fill = factor(year)
+)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  facet_wrap(~ year, scales = "free_y") +
+  scale_x_reordered() +
+  labs(
+    title = "Citizen Issues Over Time: Top TF-IDF Terms by Year",
+    subtitle = "Normalized TF-IDF: Top 5 Distinctive Terms per Year",
+    x = NULL,
+    y = "Relative Importance"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    strip.text = element_text(face = "bold"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+
+tfidfPlot
+```
+
+**Interpretation:**  
+TF-IDF identifies words that are especially distinctive within each year. This helps show how citizen complaint themes shifted over time rather than only showing the most common words overall.
+
+# Key Findings
+
+1. 311 requests were mostly related to public service and quality-of-life issues.
+2. Property crime declined from 2017 to 2019.
+3. 311 complaints and property crime did not move in exactly the same pattern.
+4. Text mining showed that complaint themes varied by year.
+5. 311 data reflects public concerns but should not be treated as a direct measure of crime.
+
+# Practical Implications
+
+These findings can help local governments understand the difference between resident concerns and official crime trends. 311 data is useful for service planning and resource allocation, while crime data is better suited for public safety analysis. Using both datasets together provides a more complete view of community conditions.
+
+# Save Output Files
+
+```{r save-files}
+write.csv(combined_311, "~/Final_Project_3/output/311_cleaned_combined_FINAL.csv", row.names = FALSE)
+write.csv(issue_counts, "~/Final_Project_3/output/311_issue_counts.csv", row.names = FALSE)
+write.csv(issue_by_year, "~/Final_Project_3/output/311_issue_by_year.csv", row.names = FALSE)
+write.csv(final_merged, "~/Final_Project_3/output/crime_311_merged.csv", row.names = FALSE)
+
+save.image("~/Final_Project_3/final_project.RData")
+
+```
