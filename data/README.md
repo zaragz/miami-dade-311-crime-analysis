@@ -1,14 +1,49 @@
-# Input data
+# Data Sources and Documentation
 
-The analysis used Miami-Dade County **311 service-request records (2017, 2018, 2019)** and annual **property-crime data (2017, 2018, 2019)**.
+This folder contains data used in the Miami-Dade 311 Service Requests and Property Crime Analysis (2017–2019).
 
-The large input CSV/Excel datasets are intentionally excluded from this repository. To reproduce the analysis, retrieve the datasets from their official open-data or reporting sources and save them locally in this folder.
+## Data Sources
 
-Before publishing source links, verify the exact dataset title, publisher, URL, access date, and license. Also review complaint-related fields for potentially sensitive or identifying information.
+### Miami-Dade County 311 Service Requests
 
-## Local inputs used in the original project
+The project analyzed 311 non-emergency service-request records from 2017, 2018, and 2019.
 
-- Three 311 service-request CSVs: one per year, 2017–2019.
-- Three property-crime Excel spreadsheets: one per year, 2017–2019.
+The original CSV files are not included because of their size.
 
-**TODO before claiming full reproducibility:** Record the exact public-source links and filenames expected by `Final_Project_3.Rmd`; verify the report runs from a clean checkout after downloading the inputs.
+**Required local files:**
+
+- `311_Service_Requests_-_Miami-Dade_County_-_2017.csv`
+- `311_Service_Requests_-_Miami-Dade_County_-_2018.csv`
+- `311_Service_Requests_-_Miami-Dade_County_-_2019.csv`
+
+These files must be placed in the `data/` folder to reproduce the full analysis.
+
+### Property Crime Data
+
+The following Excel files are included in this repository:
+
+- `PROPERTY_17.xlsx`
+- `Property-Crime-County-Type-2018.xlsx`
+- `Property-Crime-County-Type-2019.xlsx`
+
+These workbooks contain annual property crime statistics used to extract Miami-Dade County data.
+
+The project documentation identifies the property crime source as the Florida Department of Law Enforcement.
+
+## Processed Data
+
+Smaller processed outputs are available in the repository's `output/` folder:
+
+- `311_issue_counts.csv` — Request counts by issue category.
+- `311_issue_by_year.csv` — Request counts by year and issue category.
+- `crime_311_merged.csv` — Annual service-request totals and property crime statistics.
+
+The full cleaned 311 dataset is excluded because of its size.
+
+## Reproducibility Notes
+
+The original large 311 CSV files are required to rerun the analysis from the beginning. The R Markdown code contains the transformation and analysis steps.
+
+Exact official dataset download URLs, licensing details, and access dates should be verified and added here.
+
+The project uses historical public datasets for educational analysis. Any additional data should be reviewed for sensitive or identifying information before public release.
