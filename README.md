@@ -101,7 +101,7 @@ The analysis is descriptive and does not establish a causal relationship between
 4. Install the required R packages: `rmarkdown`, `tidyverse`, `lubridate`, `readxl`, `tidytext`, `stringr`, `ggplot2`, and `scales`.
 5. Open `Final_Project_3.Rmd` and knit the report to HTML.
 
-**Reproducibility note:** The three large 311 source datasets are not hosted in this repository. The complete workflow has not yet been independently verified from a clean checkout.
+**Reproducibility note:** The R Markdown analysis was successfully knitted to HTML in RStudio using the original source datasets stored locally. The large 311 CSV files are excluded from GitHub due to their size.
 
 ## Project Team
 
