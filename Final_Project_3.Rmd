@@ -117,9 +117,9 @@ requests_total
 
 ```{r load-clean-crime}
 # Load crime data
-crime_2017 <- read_excel("~/Final_Project_3/data/PROPERTY_17.xlsx", skip = 2)
-crime_2018 <- read_excel("~/Final_Project_3/data/Property-Crime-County-Type-2018.xlsx", skip = 2)
-crime_2019 <- read_excel("~/Final_Project_3/data/Property-Crime-County-Type-2019.xlsx", skip = 2)
+crime_2017 <- read_excel("data/PROPERTY_17.xlsx", skip = 2)
+crime_2018 <- read_excel("data/Property-Crime-County-Type-2018.xlsx", skip = 2)
+crime_2019 <- read_excel("data/Property-Crime-County-Type-2019.xlsx", skip = 2)
 
 # Extract Miami-Dade and add year
 miami_2017 <- crime_2017 %>%
@@ -465,14 +465,11 @@ TF-IDF identifies words that are especially distinctive within each year. This h
 
 These findings can help local governments understand the difference between resident concerns and official crime trends. 311 data is useful for service planning and resource allocation, while crime data is better suited for public safety analysis. Using both datasets together provides a more complete view of community conditions.
 
-# Save Output Files
+# Save processed output files
+dir.create("output", showWarnings = FALSE)
 
-```{r save-files}
-write.csv(combined_311, "~/Final_Project_3/output/311_cleaned_combined_FINAL.csv", row.names = FALSE)
-write.csv(issue_counts, "~/Final_Project_3/output/311_issue_counts.csv", row.names = FALSE)
-write.csv(issue_by_year, "~/Final_Project_3/output/311_issue_by_year.csv", row.names = FALSE)
-write.csv(final_merged, "~/Final_Project_3/output/crime_311_merged.csv", row.names = FALSE)
-
-save.image("~/Final_Project_3/final_project.RData")
-
+write.csv(combined_311, "output/311_cleaned_combined_FINAL.csv", row.names = FALSE)
+write.csv(issue_counts, "output/311_issue_counts.csv", row.names = FALSE)
+write.csv(issue_by_year, "output/311_issue_by_year.csv", row.names = FALSE)
+write.csv(final_merged, "output/crime_311_merged.csv", row.names = FALSE)
 ```
