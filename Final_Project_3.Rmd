@@ -49,9 +49,9 @@ The property crime dataset represents official reported property crime incidents
 # Load 311 Service Request Data
 
 ```{r load-311-data}
-Miami1 <- read.csv("~/Final_Project_3/data/311_Service_Requests_-_Miami-Dade_County_-_2017.csv")
-Miami2 <- read.csv("~/Final_Project_3/data/311_Service_Requests_-_Miami-Dade_County_-_2018.csv")
-Miami3 <- read.csv("~/Final_Project_3/data/311_Service_Requests_-_Miami-Dade_County_-_2019.csv")
+Miami1 <- read.csv("data/311_Service_Requests_-_Miami-Dade_County_-_2017.csv")
+Miami2 <- read.csv("data/311_Service_Requests_-_Miami-Dade_County_-_2018.csv")
+Miami3 <- read.csv("data/311_Service_Requests_-_Miami-Dade_County_-_2019.csv")
 ```
 
 # Clean 311 Data
